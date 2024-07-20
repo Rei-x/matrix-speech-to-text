@@ -20,6 +20,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "matrix-js-sdk": "^34.1.0",
+    "node-fetch": "^3.3.2",
     "openai": "^4.52.7",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"

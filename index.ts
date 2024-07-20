@@ -95,7 +95,7 @@ const transcribeAudio = async (
     await fs.mkdir(path.dirname(audioFilePath), { recursive: true });
 
     const fileStream = createWriteStream(audioFilePath);
-    response.body.pipe(fileStream);
+    response.body?.pipe(fileStream);
 
     await new Promise((resolve, reject) => {
       fileStream.on("finish", resolve);
