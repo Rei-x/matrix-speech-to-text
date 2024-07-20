@@ -26,6 +26,7 @@ FROM base AS release
 COPY --from=install /temp/prod/node_modules node_modules
 COPY --from=prerelease /usr/src/app/index.ts .
 COPY --from=prerelease /usr/src/app/package.json .
+RUN mkdir -p /usr/src/app/db
 
 EXPOSE 3000/tcp
 ENTRYPOINT [ "bun", "run", "index.ts" ]
