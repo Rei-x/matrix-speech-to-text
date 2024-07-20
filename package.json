@@ -1,5 +1,5 @@
 {
-  "name": "matrix-translate",
+  "name": "matrix-speech-to-text",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {

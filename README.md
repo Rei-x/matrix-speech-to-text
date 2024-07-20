@@ -1,4 +1,4 @@
-# matrix-translate
+# matrix-speech-to-text
 
 To install dependencies:
 
