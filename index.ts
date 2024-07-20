@@ -137,6 +137,21 @@ client.on(sdk.RoomEvent.Timeline, async (event, room) => {
     log("Message content: %s", JSON.stringify(event.getContent(), null, 2));
   }
 
+  const eventId = event.getId();
+
+  if (!eventId) return;
+
+  const rowEvent = await db
+    .query(`SELECT eventId FROM processed_events WHERE eventId = ?`)
+    .get(eventId);
+  if (rowEvent) {
+    log("Event %s has already been processed", eventId);
+
+    return;
+  }
+
+  db.run("INSERT INTO processed_events (eventId) VALUES (?)", [eventId]);
+
   if (
     event.getType() === "m.room.message" &&
     event.getContent().msgtype === sdk.MsgType.Text
@@ -228,17 +243,6 @@ client.on(sdk.RoomEvent.Timeline, async (event, room) => {
     log("Converted content URL to HTTP URL: %s", httpUrl);
 
     if (!httpUrl || !user.displayName) return;
-
-    const rowEvent = await db
-      .query(`SELECT eventId FROM processed_events WHERE eventId = ?`)
-      .get(eventId);
-    if (rowEvent) {
-      log("Event %s has already been processed", eventId);
-
-      return;
-    }
-
-    db.run("INSERT INTO processed_events (eventId) VALUES (?)", [eventId]);
 
     const text = await transcribeAudio(httpUrl, user.displayName, eventId);
 
