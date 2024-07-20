@@ -1,0 +1,22 @@
+{
+  "name": "matrix-translate",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/debug": "^4.1.12",
+    "@types/sqlite3": "^3.1.11",
+    "@types/uuid": "^10.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "debug": "^4.3.5",
+    "dotenv": "^16.4.5",
+    "matrix-js-sdk": "^34.1.0",
+    "openai": "^4.52.7",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
+  }
+}
