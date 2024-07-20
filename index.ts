@@ -1,5 +1,6 @@
 import * as sdk from "matrix-js-sdk";
 import * as fs from "fs/promises";
+import { existsSync, mkdirSync } from "fs";
 import { createReadStream, createWriteStream } from "fs";
 import fetch from "node-fetch";
 import OpenAI from "openai";
@@ -23,7 +24,7 @@ const config = {
   matrixBaseUrl: process.env.MATRIX_BASE_URL,
   matrixUserId: process.env.MATRIX_USER_ID,
   matrixAccessToken: process.env.MATRIX_ACCESS_TOKEN,
-  dbFilePath: process.env.DB_FILE_PATH || "./transcriptions.db",
+  dbFilePath: process.env.DB_FILE_PATH || "./db/transcriptions.db",
   tempDir: process.env.TEMP_DIR || "./temp",
   transcriptionsDir: process.env.TRANSCRIPTIONS_DIR || "./transcriptions",
   port: process.env.PORT ? parseInt(process.env.PORT) : 3000, // Add port configuration
@@ -37,6 +38,12 @@ if (
 ) {
   console.error(config);
   throw new Error("Missing required configuration");
+}
+
+const databaseDir = path.dirname(config.dbFilePath);
+
+if (!existsSync(databaseDir)) {
+  mkdirSync(databaseDir, { recursive: true });
 }
 
 // Initialize OpenAI client
