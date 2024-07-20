@@ -9,6 +9,7 @@ import debugLib from "debug";
 import sqlite3 from "sqlite3";
 import { open, Database } from "sqlite";
 import dotenv from "dotenv";
+import express from "express";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -26,6 +27,7 @@ const config = {
   dbFilePath: process.env.DB_FILE_PATH || "./transcriptions.db",
   tempDir: process.env.TEMP_DIR || "./temp",
   transcriptionsDir: process.env.TRANSCRIPTIONS_DIR || "./transcriptions",
+  port: process.env.PORT ? parseInt(process.env.PORT) : 3000, // Add port configuration
 };
 
 if (
@@ -252,12 +254,41 @@ client.on(sdk.RoomEvent.Timeline, async (event, room) => {
   }
 });
 
-initDb()
-  .then(() => {
-    client.startClient({ initialSyncLimit: 0 }).catch((error: Error) => {
-      errorLog("Error starting client: %O", error);
-    });
-  })
-  .catch((error: Error) => {
-    errorLog("Error initializing database: %O", error);
-  });
+await initDb();
+
+await client.startClient({ initialSyncLimit: 0 });
+
+// Setup Express server for health check
+const app = express();
+
+app.get("/health", (req, res) => {
+  if (client.isLoggedIn()) {
+    return res.status(200).send("OK");
+  } else {
+    return res.status(500).send("Error");
+  }
+});
+
+app.get("/enabled-rooms", async (req, res) => {
+  const rows = await db.all(
+    `SELECT roomId FROM room_settings WHERE transcriptionEnabled = 1`
+  );
+
+  const roomsIds = rows.map((row) => row.roomId);
+
+  const roomsNames = await Promise.all(
+    roomsIds.map(async (roomId) => {
+      const room = client.getRoom(roomId);
+      return {
+        roomId,
+        name: room ? room.name : undefined,
+      };
+    })
+  );
+
+  res.json(roomsNames);
+});
+
+app.listen(config.port, () => {
+  log(`Server is running on port ${config.port}`);
+});
