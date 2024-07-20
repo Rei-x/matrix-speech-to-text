@@ -9,7 +9,6 @@
     "@types/bun": "latest",
     "@types/debug": "^4.1.12",
     "@types/express": "^4.17.21",
-    "@types/sqlite3": "^3.1.11",
     "@types/uuid": "^10.0.0"
   },
   "peerDependencies": {
@@ -21,8 +20,6 @@
     "express": "^4.19.2",
     "matrix-js-sdk": "^34.1.0",
     "node-fetch": "^3.3.2",
-    "openai": "^4.52.7",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "openai": "^4.52.7"
   }
 }
