@@ -6,8 +6,7 @@ import OpenAI from "openai";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import debugLib from "debug";
-import sqlite3 from "sqlite3";
-import { open, Database } from "sqlite";
+import { Database as BunDatabase } from "bun:sqlite";
 import dotenv from "dotenv";
 import express from "express";
 
@@ -52,15 +51,12 @@ const client = sdk.createClient({
   accessToken: config.matrixAccessToken,
 });
 
-let db: Database;
+let db: BunDatabase;
 
 const initDb = async () => {
-  db = await open({
-    filename: config.dbFilePath,
-    driver: sqlite3.Database,
-  });
-
-  await db.exec(`
+  db = new BunDatabase(config.dbFilePath);
+  db.exec("PRAGMA journal_mode = WAL;");
+  db.exec(`
     CREATE TABLE IF NOT EXISTS processed_events (
       eventId TEXT PRIMARY KEY,
       userDisplayName TEXT,
@@ -113,11 +109,9 @@ const transcribeAudio = async (
     log("Received transcription: %O", transcription);
 
     // Update the event with the enhanced transcription AND display name
-    await db.run(
+    db.run(
       `UPDATE processed_events SET userDisplayName = ?, transcription = ? WHERE eventId = ?`,
-      userDisplayName,
-      transcription.text,
-      eventId
+      [userDisplayName, transcription.text, eventId]
     );
 
     // Clean up temporary audio file
@@ -152,10 +146,10 @@ client.on(sdk.RoomEvent.Timeline, async (event, room) => {
     // Command to enable transcription
     if (body === "!enableTranscription") {
       log("Enabling transcription for room: %s", roomId);
-      await db.run(
+      db.run(
         `INSERT INTO room_settings (roomId, transcriptionEnabled) VALUES (?, 1)
          ON CONFLICT(roomId) DO UPDATE SET transcriptionEnabled = 1`,
-        roomId
+        [roomId]
       );
 
       await client.sendEvent(roomId, sdk.EventType.Reaction, {
@@ -172,10 +166,10 @@ client.on(sdk.RoomEvent.Timeline, async (event, room) => {
     // Command to disable transcription
     if (body === "!disableTranscription") {
       log("Disabling transcription for room: %s", roomId);
-      await db.run(
+      db.run(
         `INSERT INTO room_settings (roomId, transcriptionEnabled) VALUES (?, 0)
          ON CONFLICT(roomId) DO UPDATE SET transcriptionEnabled = 0`,
-        roomId
+        [roomId]
       );
 
       await client.sendEvent(roomId, sdk.EventType.Reaction, {
@@ -197,10 +191,14 @@ client.on(sdk.RoomEvent.Timeline, async (event, room) => {
     const roomId = room?.roomId;
     if (!roomId) return;
 
-    const row = await db.get(
-      `SELECT transcriptionEnabled FROM room_settings WHERE roomId = ?`,
-      roomId
-    );
+    const row = db
+      .query<
+        {
+          transcriptionEnabled: number;
+        },
+        {}
+      >(`SELECT transcriptionEnabled FROM room_settings WHERE roomId = ?`)
+      .get(roomId);
     if (!row || !row.transcriptionEnabled) {
       log("Transcription is disabled for room: %s", roomId);
       return;
@@ -224,17 +222,16 @@ client.on(sdk.RoomEvent.Timeline, async (event, room) => {
 
     if (!httpUrl || !user.displayName) return;
 
-    const rowEvent = await db.get(
-      `SELECT eventId FROM processed_events WHERE eventId = ?`,
-      eventId
-    );
+    const rowEvent = await db
+      .query(`SELECT eventId FROM processed_events WHERE eventId = ?`)
+      .get(eventId);
     if (rowEvent) {
       log("Event %s has already been processed", eventId);
 
       return;
     }
 
-    await db.run("INSERT INTO processed_events (eventId) VALUES (?)", eventId);
+    db.run("INSERT INTO processed_events (eventId) VALUES (?)", [eventId]);
 
     const text = await transcribeAudio(httpUrl, user.displayName, eventId);
 
@@ -270,9 +267,14 @@ app.get("/health", (req, res) => {
 });
 
 app.get("/enabled-rooms", async (req, res) => {
-  const rows = await db.all(
-    `SELECT roomId FROM room_settings WHERE transcriptionEnabled = 1`
-  );
+  const rows = db
+    .query<
+      {
+        roomId: string;
+      },
+      []
+    >(`SELECT roomId FROM room_settings WHERE transcriptionEnabled = 1`)
+    .all();
 
   const roomsIds = rows.map((row) => row.roomId);
 
