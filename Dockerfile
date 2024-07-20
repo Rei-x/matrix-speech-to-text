@@ -1,7 +1,8 @@
 # use the official Bun image
 # see all versions at https://hub.docker.com/r/oven/bun/tags
 FROM oven/bun:1-alpine AS base
-RUN apk --no-cache add libstdc++
+RUN apk --no-cache add libstdc++ curl
+USER bun
 
 WORKDIR /usr/src/app
 
@@ -9,8 +10,6 @@ WORKDIR /usr/src/app
 # this will cache them and speed up future builds
 FROM base AS install
 
-# install with --production (exclude devDependencies)
-RUN mkdir -p /temp/prod
 WORKDIR /temp/prod
 COPY package.json bun.lockb /temp/prod/
 RUN bun install --production
@@ -23,11 +22,10 @@ COPY . .
 ENV NODE_ENV=production
 
 FROM base AS release
+
 COPY --from=install /temp/prod/node_modules node_modules
 COPY --from=prerelease /usr/src/app/index.ts .
 COPY --from=prerelease /usr/src/app/package.json .
 
-# run the app
-USER bun
 EXPOSE 3000/tcp
 ENTRYPOINT [ "bun", "run", "index.ts" ]
